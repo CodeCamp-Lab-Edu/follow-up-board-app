@@ -7,3 +7,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# กฎการใช้ Prisma
+
+เมื่อปรับเปลี่ยนโครงสร้างฐานข้อมูล (Database Schema):
+- ให้ใช้คำสั่ง `npx prisma db push` เท่านั้น
+- **ห้าม** ใช้คำสั่ง `npx prisma migrate dev`
+- ให้ใช้คำสั่ง `npx prisma generate` เสมอ

@@ -1,0 +1,16 @@
+// use prisma-next
+
+model Contact {
+  id           String    @id @default(cuid())
+  name         String
+  company      String?
+  email        String?
+  phone        String?
+  channel      String?
+  interests    String?
+  status       String    @default("รายการใหม่")
+  followUpDate DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
