@@ -1,70 +1,21 @@
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import { Contact, ContactStatus } from '@/types/contact';
-
-const INITIAL_CONTACTS: Contact[] = [
-  {
-    id: '1',
-    name: 'สมชาย ใจดี',
-    company: 'บริษัท เอบีซี จำกัด',
-    email: 'somchai@abc.co.th',
-    phone: '081-234-5678',
-    channel: ['phone', 'email'],
-    status: 'รอติดตาม',
-    followUpDate: '15 ต.ค. 2023',
-    notes: 'สนใจแพ็กเกจ Enterprise ส่งใบเสนอราคาแล้ว',
-    interests: 'Enterprise Package',
-    initials: 'ส',
-  },
-  {
-    id: '2',
-    name: 'วิไลวรรณ มั่นคง',
-    company: 'Startup X',
-    email: 'wilaiwan@startupx.io',
-    phone: '089-876-5432',
-    channel: ['email', 'line'],
-    status: 'กำลังคุย',
-    followUpDate: '18 ต.ค. 2023',
-    notes: 'ขอดู Demo ระบบเพิ่มเติมวันศุกร์นี้',
-    interests: 'Demo ระบบ CRM',
-    initials: 'ว',
-  },
-  {
-    id: '3',
-    name: 'ณัฐพล ศรีสุข',
-    company: 'อิสระ (Freelance)',
-    email: 'nuttapol.s@gmail.com',
-    phone: '086-555-4321',
-    channel: ['phone'],
-    status: 'ปิดงาน',
-    followUpDate: '-',
-    notes: 'สมัครแพ็กเกจ Pro รายปีเรียบร้อย',
-    interests: 'Pro Annual Plan',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZNvu4wJYeaJocex2gUN48FRgZxYnbgsWMEoVbuDM3vVKkyaDjvgSfb_vdLccPIj5Bd0-S3H3uKEqLw2205k7WejfMZ1ykB1hGo2gdaYagXUqQKs5uAb_YxZHV6lkppG9dObpAUM6ML7VwKIcUeIrBqKjy20G95js7Kg8QN2rSI_E0AzUhSHx6GoGHBP0HjS24sdXNVv72TkbVVUXC_hq-PMKTLSisXQ6P_ZLLci2z2qAzRJx6LHgW',
-  },
-  {
-    id: '4',
-    name: 'กิตติศักดิ์ เจริญดี',
-    company: 'บจก. นวัตกรรมไทย',
-    email: 'kittisak@thaitech.co.th',
-    phone: '082-999-8877',
-    channel: ['line', 'phone'],
-    status: 'รายการใหม่',
-    followUpDate: '20 ต.ค. 2023',
-    notes: 'ติดต่อผ่านหน้าเว็บ ต้องการระบบจัดการทีมขาย',
-    interests: 'Sales Management',
-    initials: 'ก',
-  },
-];
+import { useSession } from '@/lib/auth-client';
 
 function ContactsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, isPending: isSessionPending } = useSession();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [contacts, setContacts] = useState<Contact[]>(INITIAL_CONTACTS);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ทั้งหมด');
   const [dateFilter, setDateFilter] = useState('ทั้งหมด');
@@ -101,6 +52,36 @@ function ContactsContent() {
     followUpDate: '',
     notes: '',
   });
+
+  // Auth Protection: Redirect to /sign-in if not logged in
+  useEffect(() => {
+    if (!isSessionPending && !session) {
+      router.push('/sign-in');
+    }
+  }, [session, isSessionPending, router]);
+
+  // Fetch real contacts from Database on mount or after session confirmed
+  useEffect(() => {
+    async function fetchContacts() {
+      if (!session) return;
+      try {
+        setIsLoading(true);
+        const res = await fetch('/api/contacts');
+        if (res.ok) {
+          const data = await res.json();
+          setContacts(data.contacts || []);
+        }
+      } catch (err) {
+        console.error('Error fetching contacts from database:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (session) {
+      fetchContacts();
+    }
+  }, [session]);
 
   // Open add modal if query param is set
   useEffect(() => {
@@ -145,60 +126,82 @@ function ContactsContent() {
     setIsAddModalOpen(true);
   };
 
-  const handleSaveContact = (e: React.FormEvent) => {
+  const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault();
     const channels: string[] = [];
     if (formData.channelPhone) channels.push('phone');
     if (formData.channelEmail) channels.push('email');
     if (formData.channelLine) channels.push('line');
 
-    if (editingContact) {
-      // Edit
-      setContacts((prev) =>
-        prev.map((c) =>
-          c.id === editingContact.id
-            ? {
-                ...c,
-                name: formData.name,
-                company: formData.company,
-                email: formData.email,
-                phone: formData.phone,
-                channel: channels.length > 0 ? channels : ['phone'],
-                interests: formData.interests,
-                status: formData.status,
-                followUpDate: formData.followUpDate.trim() || '-',
-                notes: formData.notes,
-                initials: formData.name ? formData.name.charAt(0) : 'ค',
-              }
-            : c
-        )
-      );
-    } else {
-      // Add
-      const newContact: Contact = {
-        id: Date.now().toString(),
-        name: formData.name,
-        company: formData.company,
-        email: formData.email,
-        phone: formData.phone,
-        channel: channels.length > 0 ? channels : ['phone'],
-        interests: formData.interests,
-        status: formData.status,
-        followUpDate: formData.followUpDate.trim() || '-',
-        notes: formData.notes,
-        initials: formData.name ? formData.name.charAt(0) : 'ค',
-      };
-      setContacts((prev) => [newContact, ...prev]);
-    }
+    const contactPayload = {
+      name: formData.name,
+      company: formData.company,
+      email: formData.email,
+      phone: formData.phone,
+      channel: channels.length > 0 ? channels : ['phone'],
+      interests: formData.interests,
+      status: formData.status,
+      followUpDate: formData.followUpDate.trim() || '-',
+      notes: formData.notes,
+    };
 
-    setIsAddModalOpen(false);
-    setEditingContact(null);
+    setIsSubmitting(true);
+
+    try {
+      if (editingContact) {
+        // Edit in Database
+        const res = await fetch(`/api/contacts/${editingContact.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(contactPayload),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.contact) {
+            setContacts((prev) =>
+              prev.map((c) => (c.id === editingContact.id ? data.contact : c))
+            );
+          }
+        }
+      } else {
+        // Add to Database
+        const res = await fetch('/api/contacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(contactPayload),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.contact) {
+            setContacts((prev) => [data.contact, ...prev]);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error saving contact to database:', error);
+    } finally {
+      setIsSubmitting(false);
+      setIsAddModalOpen(false);
+      setEditingContact(null);
+    }
   };
 
-  const handleDeleteContact = () => {
-    if (deletingContact) {
-      setContacts((prev) => prev.filter((c) => c.id !== deletingContact.id));
-      setDeletingContact(null);
+  const handleDeleteContact = async () => {
+    if (!deletingContact) return;
+    const idToDelete = deletingContact.id;
+
+    // Optimistic UI update
+    setContacts((prev) => prev.filter((c) => c.id !== idToDelete));
+    setDeletingContact(null);
+
+    try {
+      await fetch(`/api/contacts/${idToDelete}`, {
+        method: 'DELETE',
+      });
+    } catch (err) {
+      console.error('Error deleting contact from database:', err);
     }
   };
 
@@ -260,6 +263,33 @@ function ContactsContent() {
         );
     }
   };
+
+  // If checking session or not logged in
+  if (isSessionPending) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-on-background">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-[40px] animate-spin text-primary mb-3">
+            progress_activity
+          </span>
+          <p className="text-[14px] text-on-surface-variant">กำลังตรวจสอบสิทธิ์การเข้าใช้งาน...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-on-background">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-[40px] text-error mb-3">
+            lock
+          </span>
+          <p className="text-[14px] text-on-surface-variant">กรุณาเข้าสู่ระบบก่อนเข้าถึงหน้านี้ กำลังนำทางไปหน้าเข้าสู่ระบบ...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-background text-on-background">
@@ -353,13 +383,22 @@ function ContactsContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant">
-                  {filteredContacts.length === 0 ? (
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[36px] text-primary animate-spin mb-2">
+                          progress_activity
+                        </span>
+                        <p className="text-[14px]">กำลังโหลดข้อมูลจากฐานข้อมูล...</p>
+                      </td>
+                    </tr>
+                  ) : filteredContacts.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-on-surface-variant">
                         <span className="material-symbols-outlined text-[40px] text-outline mb-2">
                           person_search
                         </span>
-                        <p className="text-[14px]">ไม่พบข้อมูลผู้ติดต่อที่ตรงกับเงื่อนไข</p>
+                        <p className="text-[14px]">ยังไม่มีข้อมูลผู้ติดต่อในฐานข้อมูล กด "เพิ่มผู้ติดต่อ" เพื่อเริ่มต้น</p>
                       </td>
                     </tr>
                   ) : (
@@ -769,9 +808,21 @@ function ContactsContent() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-md bg-primary text-on-primary text-[13px] font-semibold hover:bg-primary/90 cursor-pointer shadow-sm"
+                  disabled={isSubmitting}
+                  className="px-4 py-2 rounded-md bg-primary text-on-primary text-[13px] font-semibold hover:bg-primary/90 cursor-pointer shadow-sm flex items-center gap-2 disabled:opacity-70"
                 >
-                  {editingContact ? 'บันทึกการแก้ไข' : 'เพิ่มผู้ติดต่อ'}
+                  {isSubmitting ? (
+                    <>
+                      <span className="material-symbols-outlined text-[16px] animate-spin">
+                        progress_activity
+                      </span>
+                      กำลังบันทึก...
+                    </>
+                  ) : editingContact ? (
+                    'บันทึกการแก้ไข'
+                  ) : (
+                    'เพิ่มผู้ติดต่อ'
+                  )}
                 </button>
               </div>
             </form>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession, signOut } from '@/lib/auth-client';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -11,6 +12,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen = false, onClose, onAddContact }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   const menuItems = [
     { name: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
@@ -89,7 +91,7 @@ export default function Sidebar({ isOpen = false, onClose, onAddContact }: Sideb
                     ? 'text-primary dark:text-primary-fixed-dim border-r-2 border-primary dark:border-primary-fixed-dim font-bold bg-surface-container-low dark:bg-surface-variant'
                     : 'text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-low dark:hover:bg-surface-variant'
                 }`}
-                onClick={onClose} // Auto-close sidebar on mobile after clicking link
+                onClick={onClose}
               >
                 <Link href={item.href} className="flex items-center gap-4 px-4 py-2 w-full">
                   <span
@@ -104,6 +106,42 @@ export default function Sidebar({ isOpen = false, onClose, onAddContact }: Sideb
             );
           })}
         </ul>
+
+        {/* User Profile / Auth Status Footer */}
+        <div className="p-3 border-t border-outline-variant dark:border-outline bg-surface/50">
+          {session?.user ? (
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center text-[13px] font-bold shrink-0 shadow-sm">
+                  {session.user.name ? session.user.name.charAt(0).toUpperCase() : 'U'}
+                </div>
+                <div className="truncate text-left">
+                  <p className="font-bold text-[12px] text-on-surface truncate leading-tight">
+                    {session.user.name}
+                  </p>
+                  <p className="text-on-surface-variant text-[11px] truncate leading-tight mt-0.5">
+                    {session.user.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => signOut()}
+                className="p-1.5 rounded-md text-on-surface-variant hover:text-error hover:bg-error-container/30 transition-colors cursor-pointer shrink-0"
+                title="ออกจากระบบ"
+              >
+                <span className="material-symbols-outlined text-[18px]">logout</span>
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/sign-in"
+              className="flex items-center justify-center gap-1.5 w-full py-2 text-[12px] font-semibold text-primary hover:bg-surface-container-low dark:hover:bg-surface-variant rounded transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px]">login</span>
+              เข้าสู่ระบบ
+            </Link>
+          )}
+        </div>
       </nav>
     </>
   );

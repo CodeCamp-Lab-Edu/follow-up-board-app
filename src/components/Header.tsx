@@ -1,10 +1,14 @@
 'use client';
 
+import { useSession } from '@/lib/auth-client';
+
 interface HeaderProps {
   onMenuClick?: () => void;
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
+  const { data: session } = useSession();
+
   return (
     <header className="flex items-center justify-between px-4 md:px-8 w-full bg-surface dark:bg-background border-b border-outline-variant dark:border-outline fixed top-0 right-0 left-0 md:left-[240px] h-16 z-10">
       <div className="flex items-center gap-2 md:gap-4 flex-1">
@@ -38,12 +42,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
         <button className="p-2 text-on-surface-variant hover:text-primary transition-all rounded-full hover:bg-surface-container-low cursor-pointer hidden sm:block">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <div className="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant">
-          <img
-            alt="User Profile"
-            className="w-full h-full object-cover"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPkP3vIRacT051DWqiIhtmoUajkrmCzMvSfxnNXw9-I-0bGEy1L6E8-mbJq6Mo9qjshKeugaosnh-zIuZ1-MWK3D1MfYlxnmqDEqzUzZ6-L8ACs3A9B0be5ef7uss4DtD4XRR21kWFA3k1k8Pz-hApapEU5OQQp5o9Z2N_pKC8IxTyMaffgsVHG9gFFdYGibHILIiCq1hII6mdhSQ4jVvYN90zSFlyEVYXs2-SXwWlOxPbg1Tmx_PM"
-          />
+        <div className="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center overflow-hidden border border-outline-variant text-[13px] font-bold shadow-sm" title={session?.user?.name || 'User'}>
+          {session?.user?.name ? session.user.name.charAt(0).toUpperCase() : 'U'}
         </div>
       </div>
     </header>

@@ -7,6 +7,7 @@ Web App สำหรับจัดการรายชื่อผู้ติ
 - TypesScript
 - Prisma
 - Supabase PostgreSQL
+- Better Auth
 
 ## Setup Roles
 - ใช้ Package เวอร์ชั่น Stable ล่าสุด
